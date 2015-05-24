@@ -30,7 +30,7 @@ php artisan serve
 しかし、このProjectには会員登録機能を追加していないので、次のようにTinkerからUserを追加してから使うことをお勧めします。
 ```
 php artisan tinker
-> User::create(['name'=>'Test Cat','email'=>'testcat@example.com','password'=>bcrypt('secret')]);
+> App\User::create(['name'=>'Test Cat','email'=>'testcat@example.com','password'=>bcrypt('secret')]);
 ```
 
 Frontendは`frontend/index.html`一枚です。
