@@ -1,0 +1,129 @@
+<!doctype html>
+<html ng-app="jwt-auth">
+<head>
+	<meta charset="UTF-8">
+	<title>JWT-AUTH</title>
+</head>
+<body>
+<div ng-controller="AppController as vm">
+	<button ng-click="vm.getResource()">Get protected resource</button>
+	<div ng-if="!vm.isLoaded">
+		<p>Loading...</p>
+	</div>
+
+	<div ng-if="vm.isLoaded && vm.currentUser">
+		<h1 ng-bind="vm.currentUser.name"></h1>
+		<button ng-click="vm.signOut()">Sign out</button>
+	</div>
+	<div ng-if="vm.isLoaded && !vm.currentUser">
+		<form ng-submit="vm.attempt()">
+		<div>
+			<label for="email">E-mail</label>
+			<input type="email" id="email" ng-model="vm.email"/>
+		</div>
+		<div>
+			<label for="password">Password</label>
+			<input type="password" id="password" ng-model="vm.password"/>
+		</div>
+		<div>
+			<button type="submit">Sign in</button>
+		</div>
+		</form>
+	</div>
+</div>
+<script src="//ajax.googleapis.com/ajax/libs/angularjs/1.3.15/angular.js"></script>
+<script src="//cdn.rawgit.com/auth0/angular-jwt/master/dist/angular-jwt.js"></script>
+<script>
+	angular.module('jwt-auth', ['angular-jwt'])
+		.constant('apiUrl', 'http://localhost:8000')
+		.controller('AppController', function(Client, $window){
+			var vm = this;
+			vm.isLoaded = false;
+			vm.currentUser = null;
+
+			vm.check = function(){
+				Client.check()
+					.success(function(data){
+						vm.isLoaded = true;
+						vm.currentUser = data.user
+					})
+					.error(function(data){
+						vm.isLoaded = true;
+						vm.currentUser = null;
+					});
+			};
+			vm.check();
+
+			vm.attempt = function(){
+				Client.attempt(vm.email, vm.password)
+					.success(function(data){
+						$window.localStorage.setItem('id_token', data.token);
+						vm.check();
+					});
+			};
+
+			vm.signOut = function(){
+				vm.currentUser = null;
+				$window.localStorage.removeItem('id_token');
+			};
+
+			vm.getResource = function(){
+				Client.resource().success(function(data){
+					$window.alert(data.message);
+				}).error(function(){
+					$window.alert('failed!!');
+				})
+			}
+		})
+		.config(function (jwtInterceptorProvider, $httpProvider, $windowProvider) {
+			var window = $windowProvider.$get();
+
+			jwtInterceptorProvider.tokenGetter = [function () {
+				return window.localStorage.getItem('id_token')
+			}];
+
+			$httpProvider.interceptors.push('jwtInterceptor');
+			$httpProvider.interceptors.push(function() {
+				return {
+					'response': function(response) {
+						if(response.status !== 200){
+							console.log('Error !:',response.status);
+							console.log('Error !:',response.body)
+
+						}
+						return response
+					}
+				}
+			})
+
+		})
+		.factory('Client', function($http, apiUrl){
+			var attempt = function (email, password) {
+				var url = apiUrl + '/auth';
+
+				return $http.post(url, {
+					email: email,
+					password: password
+				})
+			};
+			var check = function () {
+				var url = apiUrl + '/auth';
+
+				return $http.get(url)
+			};
+			var resource = function () {
+				var url = apiUrl + '/protected';
+
+				return $http.get(url)
+			};
+
+			return {
+				attempt: attempt,
+				check: check,
+				resource: resource
+			};
+		})
+
+</script>
+</body>
+</html>
